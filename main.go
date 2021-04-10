@@ -21,7 +21,7 @@ THE SOFTWARE.
 */
 package main
 
-import "github.com/seaflow-uw/cruisereplay/cmd"
+import "github.com/armbrustlab/cruisereplay/cmd"
 
 func main() {
 	cmd.Execute()

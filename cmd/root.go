@@ -27,7 +27,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/seaflow-uw/cruisereplay/feeds"
+	"github.com/armbrustlab/cruisereplay/feeds"
 	"github.com/spf13/cobra"
 )
 
