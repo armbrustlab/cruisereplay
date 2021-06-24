@@ -31,7 +31,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var Version string = "v0.1.1"
+var Version string = "v0.1.2"
 
 var logger *log.Logger
 
