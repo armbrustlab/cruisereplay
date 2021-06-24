@@ -31,7 +31,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var Version string = "v0.1.0"
+var Version string = "v0.1.1"
 
 var logger *log.Logger
 
@@ -60,8 +60,7 @@ Supported data feeds are:
   * SeaFlow SFL
   # SeaFlow instrument log data
   * Kilo Moana underway data`,
-	// Uncomment the following line if your bare application
-	// has an action associated with it:
+
 	Run: func(cmd *cobra.Command, args []string) {
 		var err error
 
@@ -92,113 +91,123 @@ Supported data feeds are:
 		logger.Printf("-------------------------------------------------------\n")
 		logger.Printf("\n")
 
+		emitters := []feeds.Emitter{}
+
 		// EVT feed
-		logger.Printf("-------------------------------------------------------\n")
-		logger.Printf("Reading EVT data\n")
-		logger.Printf("-------------------------------------------------------\n")
-		evtFiles, err := feeds.FindEVTFiles(evtDirFlag)
-		if err != nil {
-			logger.Fatalf("%v", err)
-		}
-		evtData, err := feeds.NewEvt(evtFiles, outDirFlag)
-		if err != nil {
-			logger.Fatalf("%v", err)
-		}
-		if len(evtData.Warnings()) > 0 {
-			for _, w := range evtData.Warnings() {
-				logger.Printf("%v", w)
-			}
+		if (evtDirFlag != "") {
 			logger.Printf("-------------------------------------------------------\n")
-		}
-		logger.Printf("\n")
-
-		// SFL feed
-		logger.Printf("-------------------------------------------------------\n")
-		logger.Printf("Reading SFL data\n")
-		logger.Printf("-------------------------------------------------------\n")
-		sflFiles, err := feeds.FindSFLFiles(evtDirFlag)
-		if err != nil {
-			logger.Fatalf("%v", err)
-		}
-		sflData, err := feeds.NewSfl(sflFiles, outDirFlag)
-		if err != nil {
-			logger.Fatalf("%v", err)
-		}
-		if len(sflData.Warnings()) > 0 {
-			for _, w := range sflData.Warnings() {
-				logger.Printf("%v", w)
-			}
+			logger.Printf("Reading EVT data\n")
 			logger.Printf("-------------------------------------------------------\n")
-		}
-		logger.Printf("\n")
-
-		// Underway feed
-		logger.Printf("-------------------------------------------------------\n")
-		logger.Printf("Reading underway data\n")
-		logger.Printf("-------------------------------------------------------\n")
-		underwayData, err := feeds.NewUnderway(
-			underwayFileFlag, udpHostFlag, udpPortFlag, underwayThrottleFlag,
-		)
-		if err != nil {
-			logger.Fatalf("%v", err)
-		}
-		if len(underwayData.Warnings()) > 0 {
-			for _, w := range underwayData.Warnings() {
-				logger.Printf("%v", w)
+			evtFiles, err := feeds.FindEVTFiles(evtDirFlag)
+			if err != nil {
+				logger.Fatalf("%v", err)
 			}
-			logger.Printf("-------------------------------------------------------\n")
-		}
-		logger.Printf("\n")
-
-		// SeaFlow instrument log feed
-		logger.Printf("-------------------------------------------------------\n")
-		logger.Printf("Reading SeaFlow log data\n")
-		logger.Printf("-------------------------------------------------------\n")
-		seaflogData, err := feeds.NewSeaLog(instrumentLogFlag, outDirFlag)
-		if err != nil {
-			logger.Fatalf("%v", err)
-		}
-		if len(seaflogData.Warnings()) > 0 {
-			for _, w := range seaflogData.Warnings() {
-				logger.Printf("%v", w)
+			evtData, err := feeds.NewEvt(evtFiles, outDirFlag)
+			if err != nil {
+				logger.Fatalf("%v", err)
 			}
+			if len(evtData.Warnings()) > 0 {
+				for _, w := range evtData.Warnings() {
+					logger.Printf("%v", w)
+				}
+				logger.Printf("-------------------------------------------------------\n")
+			}
+			logger.Printf("\n")
+			emitters = append(emitters, evtData)
+
+			// SFL feed
 			logger.Printf("-------------------------------------------------------\n")
-		}
-		logger.Printf("\n")
-
-		emitters := []feeds.Emitter{evtData, sflData, underwayData, seaflogData}
-
-		// ***************************************************************
-		// Calculate time translations between cruise time and replay time
-		// ***************************************************************
-		// Cruise-time start
-		if cruiseStart.IsZero() {
-			cruiseStart = minTime(emitters)
-		}
-		delay, err := time.ParseDuration("5s")
-		if err != nil {
-			panic(err)
-		}
-		// Replay-time start with small delay
-		replayStart := time.Now().Add(delay)
-
-		logger.Printf("cruise start = %v\n", cruiseStart)
-		logger.Printf("replay cruise start = %v\n", replayStart)
-
-		done := make(chan bool)
-
-		for _, e := range emitters {
-			go startEmitter(e, cruiseStart, replayStart, warpFlag, done)
-			defer e.Close()
+			logger.Printf("Reading SFL data\n")
+			logger.Printf("-------------------------------------------------------\n")
+			sflFiles, err := feeds.FindSFLFiles(evtDirFlag)
+			if err != nil {
+				logger.Fatalf("%v", err)
+			}
+			sflData, err := feeds.NewSfl(sflFiles, outDirFlag)
+			if err != nil {
+				logger.Fatalf("%v", err)
+			}
+			if len(sflData.Warnings()) > 0 {
+				for _, w := range sflData.Warnings() {
+					logger.Printf("%v", w)
+				}
+				logger.Printf("-------------------------------------------------------\n")
+			}
+			logger.Printf("\n")
+			emitters = append(emitters, sflData)
 		}
 
-		logger.Printf("waiting on %d feeds\n", len(emitters))
-		for range emitters {
-			<-done
+		if (underwayFileFlag != "") {
+			// Underway feed
+			logger.Printf("-------------------------------------------------------\n")
+			logger.Printf("Reading underway data\n")
+			logger.Printf("-------------------------------------------------------\n")
+			underwayData, err := feeds.NewUnderway(
+				underwayFileFlag, udpHostFlag, udpPortFlag, underwayThrottleFlag,
+			)
+			if err != nil {
+				logger.Fatalf("%v", err)
+			}
+			if len(underwayData.Warnings()) > 0 {
+				for _, w := range underwayData.Warnings() {
+					logger.Printf("%v", w)
+				}
+				logger.Printf("-------------------------------------------------------\n")
+			}
+			logger.Printf("\n")
+			emitters = append(emitters, underwayData)
 		}
-		fmt.Println("all feeds complete, closing")
 
-		logger.Printf("exiting")
+		if (instrumentLogFlag != "") {
+			// SeaFlow instrument log feed
+			logger.Printf("-------------------------------------------------------\n")
+			logger.Printf("Reading SeaFlow log data\n")
+			logger.Printf("-------------------------------------------------------\n")
+			seaflogData, err := feeds.NewSeaLog(instrumentLogFlag, outDirFlag)
+			if err != nil {
+				logger.Fatalf("%v", err)
+			}
+			if len(seaflogData.Warnings()) > 0 {
+				for _, w := range seaflogData.Warnings() {
+					logger.Printf("%v", w)
+				}
+				logger.Printf("-------------------------------------------------------\n")
+			}
+			logger.Printf("\n")
+			emitters = append(emitters, seaflogData)
+		}
+
+		if (len(emitters) > 0) {
+			// ***************************************************************
+			// Calculate time translations between cruise time and replay time
+			// ***************************************************************
+			// Cruise-time start
+			if cruiseStart.IsZero() {
+				cruiseStart = minTime(emitters)
+			}
+			delay, err := time.ParseDuration("5s")
+			if err != nil {
+				panic(err)
+			}
+			// Replay-time start with small delay
+			replayStart := time.Now().Add(delay)
+
+			logger.Printf("cruise start = %v\n", cruiseStart)
+			logger.Printf("replay cruise start = %v\n", replayStart)
+
+			done := make(chan bool)
+
+			for _, e := range emitters {
+				go startEmitter(e, cruiseStart, replayStart, warpFlag, done)
+				defer e.Close()
+			}
+
+			logger.Printf("waiting on %d feeds\n", len(emitters))
+			for range emitters {
+				<-done
+			}
+			fmt.Println("all feeds complete, closing")
+		}
 	},
 }
 
@@ -212,14 +221,10 @@ func init() {
 	logger = log.New(os.Stderr, "", 0)
 
 	rootCmd.PersistentFlags().StringVar(&evtDirFlag, "evt", "", "EVT directory")
-	cobra.MarkFlagRequired(rootCmd.PersistentFlags(), "evt")
 	rootCmd.PersistentFlags().StringVar(&underwayFileFlag, "underway", "", "underway raw feed file")
-	cobra.MarkFlagRequired(rootCmd.PersistentFlags(), "underway")
 	rootCmd.PersistentFlags().StringVar(&instrumentLogFlag, "seaflowlog", "", "SeaFlow instrument log file")
-	cobra.MarkFlagRequired(rootCmd.PersistentFlags(), "seaflowlog")
-	rootCmd.PersistentFlags().StringVar(&outDirFlag, "outdir", "",
+	rootCmd.PersistentFlags().StringVar(&outDirFlag, "outdir", "cruisereplay_out",
 		"output directory")
-	cobra.MarkFlagRequired(rootCmd.PersistentFlags(), "outdir")
 	rootCmd.PersistentFlags().StringVar(&startFlag, "start", "",
 		"RFC3339 timestamp for replay start, in cruise time")
 	rootCmd.PersistentFlags().Float64Var(&warpFlag, "warp", 1.0,
