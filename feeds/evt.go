@@ -1,12 +1,14 @@
 package feeds
 
 import (
+	"compress/gzip"
 	"fmt"
 	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -33,7 +35,7 @@ func FindEVTFiles(dir string) (files []string, err error) {
 			if found {
 				files = append(files, walkPath)
 			} else {
-				// Look for uncompressed EVT files
+				// Look for compressed EVT files
 				found, matchErr = filepath.Match(patterngz, d.Name())
 				if matchErr != nil {
 					panic(matchErr)
@@ -96,13 +98,30 @@ func (e *Evt) Emit() (err error) {
 	if err = os.MkdirAll(outDir, os.ModePerm); err != nil {
 		return fmt.Errorf("evt: %v", err)
 	}
-	outPath := filepath.Join(outDir, filepath.Base(e.data[e.i].path))
 
-	src, err := os.Open(e.data[e.i].path)
+	// Open input file reader
+	r, err := os.Open(e.data[e.i].path)
 	if err != nil {
 		return fmt.Errorf("evt: %v", err)
 	}
-	defer src.Close()
+	defer r.Close()
+
+	// Manage gzip status to make sure we always write uncompressed EVT files
+	var (
+		outPath string
+		src     io.ReadCloser
+	)
+	if strings.HasSuffix(e.data[e.i].path, ".gz") {
+		outPath = filepath.Join(outDir, filepath.Base(e.data[e.i].path[:len(e.data[e.i].path)-3]))
+		src, err = gzip.NewReader(r)
+		if err != nil {
+			return fmt.Errorf("evt: %v", err)
+		}
+		defer src.Close()
+	} else {
+		outPath = filepath.Join(outDir, filepath.Base(e.data[e.i].path))
+		src = r
+	}
 
 	dst, err := os.Create(outPath)
 	if err != nil {
