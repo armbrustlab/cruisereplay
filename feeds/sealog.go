@@ -54,6 +54,10 @@ func NewSeaLog(file string, outDir string) (s *SeaLog, err error) {
 }
 
 func (s *SeaLog) Close() (err error) {
+	if s.file != nil {
+		err = s.file.Close()
+		s = nil
+	}
 	return
 }
 
@@ -69,7 +73,7 @@ func (s *SeaLog) Emit() (err error) {
 		return
 	}
 	rec := s.data[s.i]
-	outDir := filepath.Join(s.outDir, "datafiles")
+	outDir := filepath.Join(s.outDir, "logs")
 	if err = os.MkdirAll(outDir, os.ModePerm); err != nil {
 		return fmt.Errorf("seaflowlog: %v", err)
 	}
