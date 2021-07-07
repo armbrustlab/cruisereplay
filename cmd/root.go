@@ -31,7 +31,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var Version string = "v0.1.2"
+var Version string = "v0.2.1"
 
 var logger *log.Logger
 
@@ -94,7 +94,7 @@ Supported data feeds are:
 		emitters := []feeds.Emitter{}
 
 		// EVT feed
-		if (evtDirFlag != "") {
+		if evtDirFlag != "" {
 			logger.Printf("-------------------------------------------------------\n")
 			logger.Printf("Reading EVT data\n")
 			logger.Printf("-------------------------------------------------------\n")
@@ -137,7 +137,7 @@ Supported data feeds are:
 			emitters = append(emitters, sflData)
 		}
 
-		if (underwayFileFlag != "") {
+		if underwayFileFlag != "" {
 			// Underway feed
 			logger.Printf("-------------------------------------------------------\n")
 			logger.Printf("Reading underway data\n")
@@ -158,7 +158,7 @@ Supported data feeds are:
 			emitters = append(emitters, underwayData)
 		}
 
-		if (instrumentLogFlag != "") {
+		if instrumentLogFlag != "" {
 			// SeaFlow instrument log feed
 			logger.Printf("-------------------------------------------------------\n")
 			logger.Printf("Reading SeaFlow log data\n")
@@ -177,7 +177,7 @@ Supported data feeds are:
 			emitters = append(emitters, seaflogData)
 		}
 
-		if (len(emitters) > 0) {
+		if len(emitters) > 0 {
 			// ***************************************************************
 			// Calculate time translations between cruise time and replay time
 			// ***************************************************************
