@@ -102,7 +102,7 @@ func NewSfl(files []string, outDir string) (s *Sfl, err error) {
 
 func (s *Sfl) Close() (err error) {
 	if s.file != nil {
-		err = s.Close()
+		err = s.file.Close()
 		s = nil
 	}
 	return
