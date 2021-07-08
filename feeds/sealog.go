@@ -127,6 +127,6 @@ func (sr seaLogRecord) String() string {
 
 func (sr seaLogRecord) logTime() string {
 	tstr := sr.time.UTC().Format(time.RFC3339)
-	tstr = tstr[:13] + "-" + tstr[14:16] + "-" + tstr[17:len(tstr)-1] + "+00:00"
+	tstr = tstr[:13] + "-" + tstr[14:16] + "-" + tstr[17:len(tstr)-1] + "+00-00"
 	return tstr
 }
