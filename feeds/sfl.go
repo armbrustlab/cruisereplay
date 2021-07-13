@@ -44,6 +44,7 @@ func FindSFLFiles(dir string) (files []string, err error) {
 type Sfl struct {
 	i        int // index of next item to emit
 	data     []sflRecord
+	headers  []string
 	paths    []string
 	outDir   string
 	file     *os.File // current output file
@@ -61,13 +62,12 @@ func NewSfl(files []string, outDir string) (s *Sfl, err error) {
 		}
 		sc := bufio.NewScanner(strings.NewReader(string(fileText)))
 		lineNum := 0
-		var header string
 		for sc.Scan() {
 			lineNum++
 			lineText := sc.Text()
 			if lineNum == 1 {
 				s.paths = append(s.paths, f)
-				header = sc.Text()
+				s.headers = append(s.headers, sc.Text())
 				continue
 			}
 			cols := strings.Split(lineText, "\t")
@@ -80,9 +80,6 @@ func NewSfl(files []string, outDir string) (s *Sfl, err error) {
 					newErr := fmt.Errorf("sfl: could not parse timestamp %s:%d %v", f, lineNum, err)
 					s.warnings = append(s.warnings, Warning{err: newErr})
 					continue
-				}
-				if lineNum == 2 {
-					lineText = header + "\r\n" + lineText
 				}
 				s.data = append(s.data, sflRecord{time: lineTime, data: lineText, idx: idx})
 			} else {
@@ -131,13 +128,17 @@ func (s *Sfl) Emit() (err error) {
 	}
 	outPath := filepath.Join(outDir, filepath.Base(s.paths[rec.idx]))
 	if s.file == nil || s.file.Name() != outPath {
+		// No output file has been opened yet or it's time to change to a new output file
 		if err = s.Close(); err != nil {
 			return fmt.Errorf("sfl: %v", err)
 		}
 		if s.file, err = os.OpenFile(outPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, os.ModePerm); err != nil {
 			return fmt.Errorf("sfl: %v", err)
 		}
+		// Write the header first
+		s.file.WriteString(fmt.Sprintf("%s\r\n", s.headers[rec.idx]))
 	}
+	// Write data line
 	s.file.WriteString(fmt.Sprintf("%s\r\n", rec.data))
 	return
 }
